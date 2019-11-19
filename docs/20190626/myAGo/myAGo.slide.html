@@ -1,0 +1,1237 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>My a Go</title>
+    <meta charset='utf-8'>
+    <script>
+      var notesEnabled =  false ;
+    </script>
+    <script src='../../static/slides.js'></script>
+
+    
+
+    <script>
+      
+      if (window["location"] && window["location"]["hostname"] == "talks.golang.org") {
+        var _gaq = _gaq || [];
+        _gaq.push(["_setAccount", "UA-11222381-6"]);
+        _gaq.push(["b._setAccount", "UA-49880327-6"]);
+        window.trackPageview = function() {
+          _gaq.push(["_trackPageview", location.pathname+location.hash]);
+          _gaq.push(["b._trackPageview", location.pathname+location.hash]);
+        };
+        window.trackPageview();
+        window.trackEvent = function(category, action, opt_label, opt_value, opt_noninteraction) {
+          _gaq.push(["_trackEvent", category, action, opt_label, opt_value, opt_noninteraction]);
+          _gaq.push(["b._trackEvent", category, action, opt_label, opt_value, opt_noninteraction]);
+        };
+      }
+    </script>
+  </head>
+
+  <body style='display: none'>
+
+    <section class='slides layout-widescreen'>
+
+      <article>
+        <h1>My a Go</h1>
+        <h3>jak si ulehčujeme život</h3>
+        
+        
+          <div class="presenter">
+            
+  
+  <p>
+    Jan Saidl
+  </p>
+  
+
+  
+  <p>
+    vývojář, vshosting~
+  </p>
+  
+
+          </div>
+        
+      </article>
+
+  
+  
+      <article >
+      
+        <h3>Obsah</h3>
+        
+  <ul>
+  
+    <li>flagy</li>
+  
+    <li>větší CLI aplikace a jejich konfigurace</li>
+  
+    <li>dependency injection</li>
+  
+    <li>genererování kód</li>
+  
+  </ul>
+
+      
+      <span class="pagenumber">2</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>flagy</h3>
+        
+  <div class="code" >
+
+
+<pre><span num="1">package main</span>
+<span num="2"></span>
+<span num="3">import (</span>
+<span num="4">    &#34;flag&#34;</span>
+<span num="5">    &#34;fmt&#34;</span>
+<span num="6">)</span>
+<span num="7"></span>
+<span num="8">func main() {</span>
+<span num="9">    value := &#34;defaultní hodnota&#34;</span>
+<span num="10">    flag.StringVar(&amp;value, &#34;value&#34;, value, &#34;string hodnota&#34;)</span>
+<span num="11">    flag.Parse()</span>
+<span num="12">    fmt.Println(value)</span>
+<span num="13">}</span>
+</pre>
+
+
+</div>
+
+  
+  <p>
+    výstup:
+  </p>
+  
+
+  <div class="code" >
+
+
+<pre><span num="2">js@brundibar:~/go/vsh/talks$ go run flags.go</span>
+<span num="3">defaultní hodnota</span>
+<span num="4"></span>
+<span num="5">js@brundibar:~/go/vsh/talks$ go run flags.go  -value &#34;GoTalk&#34;</span>
+<span num="6">GoTalk</span>
+</pre>
+
+
+</div>
+
+      
+      <span class="pagenumber">3</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>Větší CLI aplikace</h3>
+        
+  
+  <p>
+    <b>cobra</b>
+  </p>
+  
+
+  <ul>
+  
+    <li><a href="https://github.com/spf13/cobra" target="_blank">github.com/spf13/cobra</a></li>
+  
+    <li>man</li>
+  
+    <li>bash autocomplete</li>
+  
+    <li>help příkazy</li>
+  
+    <li>dokumentace v Markdownu</li>
+  
+    <li>strukturované příkazy</li>
+  
+  </ul>
+
+      
+      <span class="pagenumber">4</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>cobra</h3>
+        
+  <div class="code playground" >
+<pre style="display: none"><span>package main
+
+import (
+	&#34;fmt&#34;
+	&#34;os&#34;
+
+	&#34;github.com/spf13/cobra&#34;
+)
+
+</span></pre>
+
+<pre><span num="11">func main() {</span>
+<span num="12">    root := &amp;cobra.Command{</span>
+<span num="13">        Use: &#34;run&#34;,</span>
+<span num="14">    }</span>
+<span num="15">    root.AddCommand(createCommand())</span>
+<span num="16">    if err := root.Execute(); err != nil {</span>
+<span num="17">        fmt.Println(err)</span>
+<span num="18">        os.Exit(1)</span>
+<span num="19">    }</span>
+<span num="20">}</span>
+<span num="21"></span>
+<span num="22">func createCommand() *cobra.Command {</span>
+<span num="23">    return &amp;cobra.Command{</span>
+<span num="24">        Use:   &#34;count&#34;,</span>
+<span num="25">        Short: &#34;počet argumentů&#34;,</span>
+<span num="26">        RunE: func(cmd *cobra.Command, args []string) error {</span>
+<span num="27">            fmt.Println(len(args))</span>
+<span num="28">            return nil</span>
+<span num="29">        },</span>
+<span num="30">    }</span>
+<span num="31">}</span>
+</pre>
+
+
+</div>
+
+      
+      <span class="pagenumber">5</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>Konfigurace aplikací</h3>
+        
+  
+  <p>
+    <b>viper</b>
+  </p>
+  
+
+  <ul>
+  
+    <li><a href="https://github.com/spf13/viper" target="_blank">github.com/spf13/viper</a></li>
+  
+    <li>konfigurace</li>
+  
+  </ul>
+
+  
+  <p>
+    zdroje hodnot
+  </p>
+  
+
+  <ul>
+  
+    <li>soubory (xml, yaml, toml, json ...)</li>
+  
+    <li>flagy</li>
+  
+    <li>ENV proměnné</li>
+  
+    <li>vzdálené zdroje consul a etcd</li>
+  
+  </ul>
+
+  
+  <p>
+    vychytávky
+  </p>
+  
+
+  <ul>
+  
+    <li>sledování změn konfiguračních hodnot za běhu</li>
+  
+  </ul>
+
+      
+      <span class="pagenumber">6</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>viper</h3>
+        
+  <div class="code" >
+
+
+<pre><span num="21">func createCommand() *cobra.Command {</span>
+<span num="22">    v := viper.New()</span>
+<span num="23">    v.SetDefault(&#34;format&#34;, &#34;%d&#34;)</span>
+<span num="24">    v.AutomaticEnv()</span>
+<span num="25">    cmd := &amp;cobra.Command{</span>
+<span num="26">        Use:   &#34;count&#34;,</span>
+<span num="27">        Short: &#34;počet argumentů&#34;,</span>
+<span num="28">        RunE: func(cmd *cobra.Command, args []string) error {</span>
+<span num="29">            fmt.Printf(v.GetString(&#34;format&#34;), len(args))</span>
+<span num="30">            return nil</span>
+<span num="31">        },</span>
+<span num="32">    }</span>
+<span num="33">    return cmd</span>
+<span num="34">}</span>
+</pre>
+
+
+</div>
+
+  
+  <p>
+    výstup:
+  </p>
+  
+
+  <div class="code" >
+
+
+<pre><span num="2">js@brundibar:~/go/vsh/talks$ go run viper.go count 1 2 3 4 5</span>
+<span num="3">5</span>
+<span num="4"></span>
+<span num="5">js@brundibar:~/go/vsh/talks$ export FORMAT=&#34;pocet: %d&#34;; go run viper.go count 1 2 3 4 5</span>
+<span num="6">počet: 5</span>
+</pre>
+
+
+</div>
+
+      
+      <span class="pagenumber">7</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h2>Struktura aplikací</h2>
+      
+      <span class="pagenumber">8</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>Dependency injection</h3>
+        
+  
+  <p>
+    <b>dig</b>
+  </p>
+  
+
+  <ul>
+  
+    <li><a href="https://github.com/uber-go/dig" target="_blank">github.com/uber-go/dig</a></li>
+  
+    <li>reflexe</li>
+  
+    <li>runtime DI</li>
+  
+  </ul>
+
+  
+  <p>
+    <b>wire</b>
+  </p>
+  
+
+  <ul>
+  
+    <li><a href="https://github.com/google/wire" target="_blank">github.com/google/wire</a></li>
+  
+    <li>generátor</li>
+  
+    <li>compiletime DI</li>
+  
+  </ul>
+
+      
+      <span class="pagenumber">9</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>wire</h3>
+        
+  <ul>
+  
+    <li>závislosti mezi službami jsou reprezovovány jako parametry funkce</li>
+  
+    <li>zavislosti jsou jsou doplňeny na základě shody typu</li>
+  
+  </ul>
+
+  
+  <p>
+    příklad:
+  </p>
+  
+
+  
+  <div class="code"><pre>func CreateServiceAB(a *ServiceA, b ServiceB) *ServiceAB
+
+func CreateServiceA() *ServiceA
+
+func CreateServiceB() *ServiceB</pre></div>
+  
+
+      
+      <span class="pagenumber">10</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>Služby a závislosti</h3>
+        
+  <div class="code" >
+
+
+<pre><span num="1">package service</span>
+<span num="2"></span>
+<span num="3">type Formater interface {</span>
+<span num="4">    Format(string) string</span>
+<span num="5">}</span>
+<span num="6"></span>
+<span num="7">type Hello struct {</span>
+<span num="8">    formater Formater</span>
+<span num="9">    config   Config</span>
+<span num="10">}</span>
+<span num="11"></span>
+<span num="12"><b>func New(config Config, formater Formater) *Hello {</b></span>
+<span num="13">    return &amp;Hello{</span>
+<span num="14">        config:   config,</span>
+<span num="15">        formater: formater,</span>
+<span num="16">    }</span>
+<span num="17">}</span>
+<span num="18"></span>
+<span num="19">func (h *Hello) Say() string {</span>
+<span num="20">    return h.formater.Format(h.config.Name)</span>
+<span num="21">}</span>
+</pre>
+
+
+</div>
+
+      
+      <span class="pagenumber">11</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>Služby a závislosti</h3>
+        
+  <div class="code" >
+
+
+<pre><span num="1">package service</span>
+<span num="2"></span>
+<span num="3">type Config struct {</span>
+<span num="4">    Name string</span>
+<span num="5">}</span>
+<span num="6"></span>
+<span num="7">func NewConfig() Config {</span>
+<span num="8">    return Config{</span>
+<span num="9">        Name: &#34;Honza&#34;,</span>
+<span num="10">    }</span>
+<span num="11">}</span>
+</pre>
+
+
+</div>
+
+  <div class="code" >
+
+
+<pre><span num="9">type App struct{ hello *service.Hello }</span>
+<span num="10"></span>
+<span num="11">func New(hello *service.Hello) *App {</span>
+<span num="12">    return &amp;App{</span>
+<span num="13">        hello: hello,</span>
+<span num="14">    }</span>
+<span num="15">}</span>
+<span num="16"></span>
+<span num="17">func (a *App) Run() {</span>
+<span num="18">    fmt.Println(a.hello.Say())</span>
+<span num="19">}</span>
+</pre>
+
+
+</div>
+
+      
+      <span class="pagenumber">12</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>wire - kontroly</h3>
+        
+  <div class="code" >
+
+
+<pre><span num="12">//go:generate wire</span>
+<span num="13">func CreateApp(config service.Config) (*App, error) {</span>
+<span num="14">    wire.Build(</span>
+<span num="15">        New,</span>
+<span num="16">        service.New,</span>
+<span num="17">    )</span>
+<span num="18">    return &amp;App{}, nil</span>
+<span num="19">}</span>
+</pre>
+
+
+</div>
+
+  
+  <p>
+    go generate
+  </p>
+  
+
+  <div class="code" >
+
+
+<pre><span num="1">wire: container.go:12:1: inject CreateApp: no provider found for service.Formater</span>
+<span num="2">    needed by *service.Hello in provider &#34;New&#34; (service/service.go:12:6)</span>
+<span num="3">    needed by *wire.App in provider &#34;New&#34; (app.go:12:6)</span>
+<span num="4">wire: wire: generate failed</span>
+<span num="5">wire: at least one generate failure</span>
+</pre>
+
+
+</div>
+
+      
+      <span class="pagenumber">13</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>wire</h3>
+        
+  <div class="code" >
+
+
+<pre><span num="13"><b>type FmtFormater string</b></span>
+<span num="14"></span>
+<span num="15">func (f FmtFormater) Format(in string) string {</span>
+<span num="16">    return fmt.Sprintf(string(f), in)</span>
+<span num="17">}</span>
+<span num="18"></span>
+<span num="19"><b>func DefaultFormater() service.Formater {</b></span>
+<span num="20">    return FmtFormater(&#34;jméno: %s&#34;)</span>
+<span num="21">}</span>
+<span num="22"></span>
+<span num="23">//go:generate wire</span>
+<span num="24">func CreateApp(config service.Config) (*App, error) {</span>
+<span num="25">    wire.Build(</span>
+<span num="26">        New,</span>
+<span num="27">        service.New,</span>
+<span num="28">        <b>DefaultFormater,</b></span>
+<span num="29">    )</span>
+<span num="30">    return &amp;App{}, nil</span>
+<span num="31">}</span>
+</pre>
+
+
+</div>
+
+      
+      <span class="pagenumber">14</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>go generate</h3>
+        
+  <div class="code" >
+
+
+<pre><span num="14">// Injectors from container.go:</span>
+<span num="15"></span>
+<span num="16">func CreateApp(config service.Config) (*App, error) {</span>
+<span num="17">    formater := DefaultFormater()</span>
+<span num="18">    hello := service.New(config, formater)</span>
+<span num="19">    app := New(hello)</span>
+<span num="20">    return app, nil</span>
+<span num="21">}</span>
+</pre>
+
+
+</div>
+
+      
+      <span class="pagenumber">15</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>spuštění</h3>
+        
+  <div class="code" >
+
+
+<pre><span num="22">func createCommand() *cobra.Command {</span>
+<span num="23">    return &amp;cobra.Command{</span>
+<span num="24">        Use: &#34;say&#34;,</span>
+<span num="25">        RunE: func(cmd *cobra.Command, args []string) error {</span>
+<span num="26">            <b>app, err := app.CreateApp(service.NewConfig())</b></span>
+<span num="27">            if err != nil {</span>
+<span num="28">                return err</span>
+<span num="29">            }</span>
+<span num="30">            <b>app.Run()</b></span>
+<span num="31">            return nil</span>
+<span num="32">        },</span>
+<span num="33">    }</span>
+<span num="34">}</span>
+</pre>
+
+
+</div>
+
+      
+      <span class="pagenumber">16</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>složitější struktura aplikace</h3>
+        
+  <div class="code" >
+
+
+<pre><span num="21">type ServiceA struct {</span>
+<span num="22">    say *service.Hello</span>
+<span num="23">}</span>
+<span num="24"></span>
+<span num="25">func NewServiceA(say *service.Hello) *ServiceA {</span>
+<span num="26">    return &amp;ServiceA{</span>
+<span num="27">        say: say,</span>
+<span num="28">    }</span>
+<span num="29">}</span>
+<span num="30"></span>
+<span num="31">type ServiceB struct {</span>
+<span num="32">    say *service.Hello</span>
+<span num="33">}</span>
+<span num="34"></span>
+<span num="35">func NewServiceB(say *service.Hello) *ServiceB {</span>
+<span num="36">    return &amp;ServiceB{</span>
+<span num="37">        say: say,</span>
+<span num="38">    }</span>
+<span num="39">}</span>
+</pre>
+
+
+</div>
+
+      
+      <span class="pagenumber">17</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>výstup</h3>
+        
+  <div class="code" >
+
+
+<pre><span num="14">//go:generate wire</span>
+<span num="15">func CreateApp(_ service.Config) (*App, error) {</span>
+<span num="16">    wire.Build(</span>
+<span num="17">        New,</span>
+<span num="18">        service.New,</span>
+<span num="19">        NewServiceA,</span>
+<span num="20">        NewServiceB,</span>
+<span num="21">        DefaultFormater,</span>
+<span num="22">    )</span>
+<span num="23">    return &amp;App{}, nil</span>
+<span num="24">}</span>
+</pre>
+
+
+</div>
+
+  
+  <p>
+    go generate
+  </p>
+  
+
+  <div class="code" >
+
+
+<pre><span num="16">func CreateApp(config service.Config) (*App, error) {</span>
+<span num="17">    formater := DefaultFormater()</span>
+<span num="18">    hello := service.New(config, formater)</span>
+<span num="19">    serviceA := NewServiceA(hello)</span>
+<span num="20">    serviceB := NewServiceB(hello)</span>
+<span num="21">    app := New(serviceA, serviceB)</span>
+<span num="22">    return app, nil</span>
+<span num="23">}</span>
+</pre>
+
+
+</div>
+
+      
+      <span class="pagenumber">18</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>jeden typ dvě instance</h3>
+        
+  <ul>
+  
+    <li>nemůžeme/nechceme zasahovat do kódu serviceA a serviceB</li>
+  
+  </ul>
+
+      
+      <span class="pagenumber">19</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>jedno z řešení?</h3>
+        
+  <div class="code" >
+
+
+<pre><span num="16">type ServiceAHello service.Hello</span>
+<span num="17">type ServiceBHello service.Hello</span>
+<span num="18">type ConfigAHello service.Config</span>
+<span num="19">type ConfigBHello service.Config</span>
+<span num="20"></span>
+<span num="21">func NewServiceHelloA(config ConfigAHello, formater service.Formater) *ServiceAHello {</span>
+<span num="22">    return (*ServiceAHello)(service.New(service.Config(config), formater))</span>
+<span num="23">}</span>
+<span num="24"></span>
+<span num="25">func NewServiceHelloB(config ConfigBHello, formater service.Formater) *ServiceBHello {</span>
+<span num="26">    return (*ServiceBHello)(service.New(service.Config(config), formater))</span>
+<span num="27">}</span>
+</pre>
+
+
+</div>
+
+  <div class="code" >
+
+
+<pre><span num="10">//go:generate wire</span>
+<span num="11">func CreateApp(a ConfigAHello, b ConfigBHello) (*App, error) {</span>
+<span num="12">    wire.Build(</span>
+<span num="13">        New,</span>
+<span num="14">        NewServiceA,</span>
+<span num="15">        NewServiceB,</span>
+<span num="16">        NewServiceHelloA,</span>
+<span num="17">        NewServiceHelloB,</span>
+</pre>
+
+
+</div>
+
+      
+      <span class="pagenumber">20</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>výstup</h3>
+        
+  <div class="code" >
+
+
+<pre><span num="10">func CreateApp(a ConfigAHello, b ConfigBHello) (*App, error) {</span>
+<span num="11">    formater := DefaultFormater()</span>
+<span num="12">    serviceAHello := NewServiceHelloA(a, formater)</span>
+<span num="13">    serviceA := NewServiceA(serviceAHello)</span>
+<span num="14">    serviceBHello := NewServiceHelloB(b, formater)</span>
+<span num="15">    serviceB := NewServiceB(serviceBHello)</span>
+<span num="16">    app := New(serviceA, serviceB)</span>
+<span num="17">    return app, nil</span>
+<span num="18">}</span>
+</pre>
+
+
+</div>
+<figcaption>UFF</figcaption>
+      
+      <span class="pagenumber">21</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>naše řešení</h3>
+        <figcaption>to určitě jde vygenerovat</figcaption>
+<div class="image">
+  <img src="img/Cartoon_Robot.svg" width="300">
+</div>
+
+      
+      <span class="pagenumber">22</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>Generování kódu v Go</h3>
+        
+  
+  <p>
+    stringer
+  </p>
+  
+
+  <ul>
+  
+    <li><a href="https://godoc.org/golang.org/x/tools/cmd/stringer" target="_blank">golang.org/x/tools/cmd/stringer</a></li>
+  
+    <li>jednoúčelová věc</li>
+  
+  </ul>
+
+  <div class="code" >
+
+
+<pre><span num="8">type Pill int</span>
+<span num="9"></span>
+<span num="10">//go:generate stringer -type=Pill</span>
+<span num="11">const (</span>
+<span num="12">    Placebo Pill = iota</span>
+<span num="13">    Aspirin</span>
+<span num="14">    Ibuprofen</span>
+<span num="15">    Paracetamol</span>
+<span num="16">    Acetaminophen = Paracetamol</span>
+<span num="17">)</span>
+<span num="18"></span>
+<span num="19">var _ fmt.Stringer = Pill(nil)</span>
+</pre>
+
+
+</div>
+
+      
+      <span class="pagenumber">23</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>výstup</h3>
+        
+  <div class="code" >
+
+
+<pre><span num="8">func _() {</span>
+<span num="9">    // An &#34;invalid array index&#34; compiler error signifies that the constant values have changed.</span>
+<span num="10">    // Re-run the stringer command to generate them again.</span>
+<span num="11">    var x [1]struct{}</span>
+<span num="12">    _ = x[Placebo-0]</span>
+<span num="13">    _ = x[Aspirin-1]</span>
+<span num="14">    _ = x[Ibuprofen-2]</span>
+<span num="15">    _ = x[Paracetamol-3]</span>
+<span num="16">}</span>
+<span num="17"></span>
+<span num="18">const _Pill_name = &#34;PlaceboAspirinIbuprofenParacetamol&#34;</span>
+<span num="19"></span>
+<span num="20">var _Pill_index = [...]uint8{0, 7, 14, 23, 34}</span>
+<span num="21"></span>
+<span num="22">func (i Pill) String() string {</span>
+<span num="23">    if i &lt; 0 || i &gt;= Pill(len(_Pill_index)-1) {</span>
+<span num="24">        return &#34;Pill(&#34; &#43; strconv.FormatInt(int64(i), 10) &#43; &#34;)&#34;</span>
+<span num="25">    }</span>
+<span num="26">    return _Pill_name[_Pill_index[i]:_Pill_index[i&#43;1]]</span>
+<span num="27">}</span>
+</pre>
+
+
+</div>
+
+      
+      <span class="pagenumber">24</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>Proč generujeme kód</h3>
+        
+  <ul>
+  
+    <li>jsme líní</li>
+  
+    <li>chceme wire</li>
+  
+    <li>chceme typovost, ale nemáme generika</li>
+  
+    <li>nemáme čas čekat</li>
+  
+    <li>ne vždy jde všechno napsat univerzálně</li>
+  
+    <li>může se to hodit</li>
+  
+  </ul>
+
+      
+      <span class="pagenumber">25</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>Generator templater</h3>
+        
+  
+  <p>
+    definice:
+  </p>
+  
+
+  <div class="code" >
+
+
+<pre><span num="1">package test</span>
+<span num="2"></span>
+<span num="3">type TemplateA struct {</span>
+<span num="4">    Name  string</span>
+<span num="5">    Value int</span>
+<span num="6">}</span>
+</pre>
+
+
+</div>
+
+  
+  <p>
+    šablona:
+  </p>
+  
+
+  <div class="code" >
+
+
+<pre><span num="1">package auto</span>
+<span num="2"></span>
+<span num="3"></span>
+<span num="4">func {{.Name}}() int  {</span>
+<span num="5">    return {{.Value}}</span>
+<span num="6">}</span>
+</pre>
+
+
+</div>
+
+      
+      <span class="pagenumber">26</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>Použití</h3>
+        
+  <div class="code" >
+
+
+<pre><span num="8">//go:generate templater</span>
+<span num="9">var _ = test.TemplateA{</span>
+<span num="10">    Name:  &#34;Ahoj&#34;,</span>
+<span num="11">    Value: 42,</span>
+<span num="12">}</span>
+</pre>
+
+
+</div>
+
+  
+  <p>
+    výstup:
+  </p>
+  
+
+  <div class="code" >
+
+
+<pre><span num="1">// &#43;build !templater</span>
+<span num="2">// Code generated by &#34;templater&#34;; DO NOT EDIT.</span>
+<span num="3"></span>
+<span num="4">package templater</span>
+<span num="5"></span>
+<span num="6">func Ahoj() int {</span>
+<span num="7">    return 42</span>
+<span num="8">}</span>
+</pre>
+
+
+</div>
+
+      
+      <span class="pagenumber">27</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>Rozšíření o vlastní a vestavěné funkce</h3>
+        
+  <div class="code" >
+
+
+<pre><span num="1">package testFunc</span>
+<span num="2"></span>
+<span num="3">import (</span>
+<span num="4">    &#34;fmt&#34;</span>
+<span num="5">)</span>
+<span num="6"></span>
+<span num="7">type TemplateA struct {</span>
+<span num="8">    Name  string</span>
+<span num="9">    Value int</span>
+<span num="10">}</span>
+<span num="11"></span>
+<span num="12">func (a TemplateA) Full() string {</span>
+<span num="13">    return fmt.Sprintf(&#34;%s (%d)&#34;, a.Name, a.Value)</span>
+<span num="14">}</span>
+</pre>
+
+
+</div>
+
+  
+  <p>
+    šablona:
+  </p>
+  
+
+  <div class="code" >
+
+
+<pre><span num="1">package auto</span>
+<span num="2"></span>
+<span num="3"></span>
+<span num="4">func {{.Name}}() string  {</span>
+<span num="5">    return {{GoValue .Full}}</span>
+<span num="6">}</span>
+</pre>
+
+
+</div>
+
+      
+      <span class="pagenumber">28</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>výstup:</h3>
+        
+  <div class="code" >
+
+
+<pre><span num="1">// &#43;build !templater</span>
+<span num="2">// Code generated by &#34;templater&#34;; DO NOT EDIT.</span>
+<span num="3"></span>
+<span num="4">package templater</span>
+<span num="5"></span>
+<span num="6">func Ahoj() string {</span>
+<span num="7">    return &#34;Ahoj (42)&#34;</span>
+<span num="8">}</span>
+</pre>
+
+
+</div>
+
+      
+      <span class="pagenumber">29</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h2>Jak s tím na wire?</h2>
+      
+      <span class="pagenumber">30</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>DI šablona</h3>
+        
+  <div class="code" >
+
+
+<pre><span num="10">//go:generate templater</span>
+<span num="11">var _ = func() *s.Di {</span>
+<span num="12">    return s.NewDi(&#34;app&#34;).</span>
+<span num="13">        Add(</span>
+<span num="14">            app.New,</span>
+<span num="15">            app.DefaultFormater,</span>
+<span num="16">            s.Scope(</span>
+<span num="17">                s.Config(service.NewConfig, &#34;helloA&#34;),</span>
+<span num="18">                s.Service(service.New),</span>
+<span num="19">            ),</span>
+<span num="20">            s.Scope(</span>
+<span num="21">                s.Config(service.NewConfig, &#34;helloB&#34;),</span>
+<span num="22">                s.Service(service.New),</span>
+<span num="23">            ),</span>
+<span num="24">        )</span>
+<span num="25">}</span>
+</pre>
+
+
+</div>
+
+      
+      <span class="pagenumber">31</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>výstup:</h3>
+        
+  <div class="code" >
+
+
+<pre><span num="10">func CreateApp(a ConfigAHello, b ConfigBHello) (*App, error) {</span>
+<span num="11">    formater := DefaultFormater()</span>
+<span num="12">    serviceAHello := NewServiceHelloA(a, formater)</span>
+<span num="13">    serviceA := NewServiceA(serviceAHello)</span>
+<span num="14">    serviceBHello := NewServiceHelloB(b, formater)</span>
+<span num="15">    serviceB := NewServiceB(serviceBHello)</span>
+<span num="16">    app := New(serviceA, serviceB)</span>
+<span num="17">    return app, nil</span>
+<span num="18">}</span>
+</pre>
+
+
+</div>
+
+      
+      <span class="pagenumber">32</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>Jak to funguje?</h3>
+        
+<div class="image">
+  <img src="img/curtain-812222_1280.jpg" width="700">
+</div>
+
+      
+      <span class="pagenumber">33</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h2>Dotazy</h2>
+      
+      <span class="pagenumber">34</span>
+      </article>
+  
+  
+
+      <article>
+        <h3>Thank you</h3>
+        
+          <div class="presenter">
+            
+  
+  <p>
+    Jan Saidl
+  </p>
+  
+
+  
+  <p>
+    vývojář, vshosting~
+  </p>
+  
+<p class="link"><a href="http://twitter.com/jansaidl" target="_blank">@jansaidl</a></p>
+          </div>
+        
+      </article>
+
+    </section>
+
+    <div id="help">
+      Use the left and right arrow keys or click the left and right
+      edges of the page to navigate between slides.<br>
+      (Press 'H' or navigate to hide this message.)
+    </div>
+
+    
+    <script src='../../play.js'></script>
+    
+
+    <script>
+      (function() {
+        
+        if (window["location"] && window["location"]["hostname"] == "talks.golang.org") {
+          var ga = document.createElement("script"); ga.type = "text/javascript"; ga.async = true;
+          ga.src = ("https:" == document.location.protocol ? "https://ssl" : "http://www") + ".google-analytics.com/ga.js";
+          var s = document.getElementsByTagName("script")[0]; s.parentNode.insertBefore(ga, s);
+        }
+      })();
+    </script>
+  </body>
+</html>

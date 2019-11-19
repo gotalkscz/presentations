@@ -1,0 +1,874 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Zámky v GO</title>
+    <meta charset='utf-8'>
+    <script>
+      var notesEnabled =  false ;
+    </script>
+    <script src='../../static/slides.js'></script>
+
+    
+
+    <script>
+      
+      if (window["location"] && window["location"]["hostname"] == "talks.golang.org") {
+        var _gaq = _gaq || [];
+        _gaq.push(["_setAccount", "UA-11222381-6"]);
+        _gaq.push(["b._setAccount", "UA-49880327-6"]);
+        window.trackPageview = function() {
+          _gaq.push(["_trackPageview", location.pathname+location.hash]);
+          _gaq.push(["b._trackPageview", location.pathname+location.hash]);
+        };
+        window.trackPageview();
+        window.trackEvent = function(category, action, opt_label, opt_value, opt_noninteraction) {
+          _gaq.push(["_trackEvent", category, action, opt_label, opt_value, opt_noninteraction]);
+          _gaq.push(["b._trackEvent", category, action, opt_label, opt_value, opt_noninteraction]);
+        };
+      }
+    </script>
+  </head>
+
+  <body style='display: none'>
+
+    <section class='slides layout-widescreen'>
+
+      <article>
+        <h1>Zámky v GO</h1>
+        
+        
+        
+          <div class="presenter">
+            
+  
+  <p>
+    Matěj Pavlíček
+  </p>
+  
+
+  
+  <p>
+    backend vývojář, vshosting~
+  </p>
+  
+
+          </div>
+        
+      </article>
+
+  
+  
+      <article >
+      
+        <h3>Co nás čeká?</h3>
+        
+  <ul>
+  
+    <li>Co je to kritická sekce?</li>
+  
+    <li>Práce se sync.Mutex a sync.RWMutex</li>
+  
+    <li>Více instancí přistupujících ke sdíleným zdrojům</li>
+  
+  </ul>
+
+      
+      <span class="pagenumber">2</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>Request counter</h3>
+        
+  <div class="code playground" >
+<pre style="display: none"><span>package main
+
+import (
+	&#34;fmt&#34;
+	&#34;time&#34;
+)
+
+// - představme si REST API, kdy každý request spustí jednu gouroutine
+// - chodí 1000 requestů za vteřinu
+
+</span></pre>
+
+<pre><span num="12">type RequestCounter struct {</span>
+<span num="13">    requestCount int</span>
+<span num="14">}</span>
+<span num="15"></span>
+<span num="16">func (r *RequestCounter) Increment() {</span>
+<span num="17">    r.requestCount&#43;&#43;</span>
+<span num="18">}</span>
+<span num="19"></span>
+<span num="20">func (r *RequestCounter) GetCount() int {</span>
+<span num="21">    return r.requestCount</span>
+<span num="22">}</span>
+<span num="23"></span>
+<span num="24">func main() {</span>
+<span num="25">    counter := RequestCounter{}</span>
+<span num="26">    for i := 0; i &lt; 1000; i&#43;&#43; { // &lt;-- přijde 1000 requestů najednou</span>
+<span num="27">        go func() { // &lt;-- odbavujeme paralelně</span>
+<span num="28">            counter.Increment()</span>
+<span num="29">            // handle request</span>
+<span num="30">        }()</span>
+<span num="31">    }</span>
+<span num="32"></span>
+<span num="33">    time.Sleep(time.Second * 2)</span>
+<span num="34">    fmt.Println(counter.GetCount())</span>
+<span num="35">}</span>
+</pre>
+
+
+</div>
+
+      
+      <span class="pagenumber">3</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>Kritická sekce</h3>
+        
+  <ul>
+  
+    <li>neohlídané kritické sekce mohou vést k nepředvídatelným výsledkům</li>
+  
+  </ul>
+
+  <div class="code playground" >
+<pre style="display: none"><span>package main
+
+import &#34;time&#34;
+
+</span></pre>
+
+<pre><span num="6">func main() {</span>
+<span num="7">    var sum int</span>
+<span num="8"></span>
+<span num="9">    for i := 1; i &lt;= 1000; i&#43;&#43; {</span>
+<span num="10">        go func() {</span>
+<span num="11"></span>
+<span num="12">            // kritická sekce</span>
+<span num="13">            <b>sum&#43;&#43; // &lt;-- tato operace není atomická</b></span>
+<span num="14">            // kritická sekce</span>
+<span num="15"></span>
+<span num="16">        }()</span>
+<span num="17">    }</span>
+<span num="18"></span>
+<span num="19">    time.Sleep(time.Second * 2)</span>
+<span num="20">    println(sum)</span>
+<span num="21">}</span>
+</pre>
+
+
+</div>
+
+      
+      <span class="pagenumber">4</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>sync.Mutex</h3>
+        
+  <div class="code" >
+
+
+<pre><span num="4">type Mutex interface {</span>
+<span num="5">    Lock()</span>
+<span num="6">    Unlock()</span>
+<span num="7">}</span>
+</pre>
+
+
+</div>
+
+<div class="image">
+  <img src="img/lock.png" width="400">
+</div>
+
+      
+      <span class="pagenumber">5</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>Bezpečný request counter</h3>
+        
+  <div class="code playground" >
+<pre style="display: none"><span>package main
+
+import (
+	&#34;fmt&#34;
+	&#34;sync&#34;
+	&#34;time&#34;
+)
+
+</span></pre>
+
+<pre><span num="10">type RequestCounter struct {</span>
+<span num="11">    <b>lock         sync.Mutex</b></span>
+<span num="12">    requestCount int</span>
+<span num="13">}</span>
+<span num="14"></span>
+<span num="15">func (r *RequestCounter) Increment() {</span>
+<span num="16">    <b>r.lock.Lock()</b></span>
+<span num="17">    r.requestCount&#43;&#43;</span>
+<span num="18">    <b>r.lock.Unlock()</b></span>
+<span num="19">}</span>
+<span num="20"></span>
+<span num="21">func (r *RequestCounter) GetCount() int {</span>
+<span num="22">    <b>r.lock.Lock()</b></span>
+<span num="23">    count := r.requestCount</span>
+<span num="24">    <b>r.lock.Unlock()</b></span>
+<span num="25">    return count</span>
+<span num="26">}</span>
+</pre>
+
+<pre style="display: none"><span>
+func main() {
+	counter := RequestCounter{}
+	for i := 0; i &lt; 1000; i&#43;&#43; {
+		go func() {
+			counter.Increment()
+			// handle request
+		}()
+	}
+
+	time.Sleep(time.Second * 2)
+	fmt.Println(counter.GetCount())
+}
+</span></pre>
+</div>
+
+      
+      <span class="pagenumber">6</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>Vylepšený request counter</h3>
+        
+  <div class="code" >
+
+
+<pre><span num="14">type RequestCounter struct {</span>
+<span num="15">    lock         sync.Mutex</span>
+<span num="16">    <b>requestCount map[string]int</b></span>
+<span num="17">}</span>
+<span num="18"></span>
+<span num="19"><b>func (r RequestCounter) Increment(method string) {</b></span>
+<span num="20">    r.lock.Lock()</span>
+<span num="21">    <b>r.requestCount[method]&#43;&#43;</b></span>
+<span num="22">    r.lock.Unlock()</span>
+<span num="23">}</span>
+<span num="24"></span>
+<span num="25"><b>func (r *RequestCounter) GetCount(method string) int {</b></span>
+<span num="26">    r.lock.Lock()</span>
+<span num="27">    <b>count := r.requestCount[method]</b></span>
+<span num="28">    r.lock.Unlock()</span>
+<span num="29">    return count</span>
+<span num="30">}</span>
+</pre>
+
+
+</div>
+
+      
+      <span class="pagenumber">7</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>Vylepšený request counter</h3>
+        
+  <div class="code playground" >
+<pre style="display: none"><span>package main
+
+import (
+	&#34;fmt&#34;
+	&#34;net/http&#34;
+	&#34;sync&#34;
+	&#34;time&#34;
+)
+
+// chceme rozdělit jednotlivé metody requestů, proto si na místo int dáme mapu string int
+// skryl jsem tu jednu záludnost
+
+// START OMIT
+type RequestCounter struct {
+	lock         sync.Mutex
+	requestCount map[string]int // HL
+}
+
+func (r RequestCounter) Increment(method string) { // HL
+	r.lock.Lock()
+	r.requestCount[method]&#43;&#43; // HL
+	r.lock.Unlock()
+}
+
+func (r *RequestCounter) GetCount(method string) int { // HL
+	r.lock.Lock()
+	count := r.requestCount[method] // HL
+	r.lock.Unlock()
+	return count
+}
+
+// END OMIT
+
+</span></pre>
+
+<pre><span num="35">func main() {</span>
+<span num="36">    <b>counter := RequestCounter{requestCount: make(map[string]int)} // &lt;-- inicializace mapy</b></span>
+<span num="37">    for i := 0; i &lt; 1000; i&#43;&#43; {</span>
+<span num="38">        go func() {</span>
+<span num="39">            <b>counter.Increment(http.MethodGet)</b></span>
+<span num="40">            // handle GET request</span>
+<span num="41">        }()</span>
+<span num="42">    }</span>
+<span num="43">    for i := 0; i &lt; 1000; i&#43;&#43; {</span>
+<span num="44">        go func() {</span>
+<span num="45">            <b>counter.Increment(http.MethodPost)</b></span>
+<span num="46">            // handle POST request</span>
+<span num="47">        }()</span>
+<span num="48">    }</span>
+<span num="49"></span>
+<span num="50">    time.Sleep(time.Second * 2)</span>
+<span num="51">    <b>fmt.Println(http.MethodGet, counter.GetCount(http.MethodGet))</b></span>
+<span num="52">    <b>fmt.Println(http.MethodPost, counter.GetCount(http.MethodPost))</b></span>
+<span num="53">}</span>
+</pre>
+
+
+</div>
+
+      
+      <span class="pagenumber">8</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>Mutex nesmí být kopírován!</h3>
+        
+  <div class="code playground" >
+<pre style="display: none"><span>package main
+
+import (
+	&#34;fmt&#34;
+	&#34;net/http&#34;
+	&#34;sync&#34;
+	&#34;time&#34;
+)
+
+</span></pre>
+
+<pre><span num="11">type RequestCounter struct {</span>
+<span num="12">    lock         sync.Mutex</span>
+<span num="13">    requestCount map[string]int</span>
+<span num="14">}</span>
+<span num="15"></span>
+<span num="16"><b>func (r *RequestCounter) Increment(method string) {</b></span>
+<span num="17">    r.lock.Lock()</span>
+<span num="18">    r.requestCount[method]&#43;&#43;</span>
+<span num="19">    r.lock.Unlock()</span>
+<span num="20">}</span>
+<span num="21"></span>
+<span num="22">func (r *RequestCounter) GetCount(method string) int {</span>
+<span num="23">    r.lock.Lock()</span>
+<span num="24">    count := r.requestCount[method]</span>
+<span num="25">    r.lock.Unlock()</span>
+<span num="26">    return count</span>
+<span num="27">}</span>
+</pre>
+
+<pre style="display: none"><span>
+func main() {
+	counter := RequestCounter{requestCount: make(map[string]int)}
+	for i := 0; i &lt; 1000; i&#43;&#43; {
+		go func() {
+			counter.Increment(http.MethodGet)
+			// handle request
+		}()
+	}
+	for i := 0; i &lt; 1000; i&#43;&#43; {
+		go func() {
+			counter.Increment(http.MethodPost)
+			// handle request
+		}()
+	}
+
+	time.Sleep(time.Second * 2)
+	fmt.Println(http.MethodGet, counter.GetCount(http.MethodGet))
+	fmt.Println(http.MethodPost, counter.GetCount(http.MethodPost))
+}
+</span></pre>
+</div>
+
+      
+      <span class="pagenumber">9</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>Return statement uvnitř kritické sekce</h3>
+        
+  <div class="code playground" >
+<pre style="display: none"><span>package main
+
+import (
+	&#34;fmt&#34;
+	&#34;net/http&#34;
+	&#34;sync&#34;
+	&#34;time&#34;
+)
+
+</span></pre>
+
+<pre><span num="11">type RequestCounter struct {</span>
+<span num="12">    lock         sync.Mutex</span>
+<span num="13">    requestCount map[string]int</span>
+<span num="14">}</span>
+<span num="15"></span>
+<span num="16">func (r *RequestCounter) Increment(method string) {</span>
+<span num="17">    r.lock.Lock()</span>
+<span num="18">    <b>if count := r.requestCount[method]; count &gt;= 500 {</b></span>
+<span num="19">        <b>return</b></span>
+<span num="20">    <b>}</b></span>
+<span num="21">    r.requestCount[method]&#43;&#43;</span>
+<span num="22">    r.lock.Unlock()</span>
+<span num="23">}</span>
+<span num="24"></span>
+<span num="25">func (r *RequestCounter) GetCount(method string) int {</span>
+<span num="26">    r.lock.Lock()</span>
+<span num="27">    count := r.requestCount[method]</span>
+<span num="28">    r.lock.Unlock()</span>
+<span num="29">    return count</span>
+<span num="30">}</span>
+</pre>
+
+<pre style="display: none"><span>
+func main() {
+	counter := RequestCounter{requestCount: make(map[string]int)}
+	for i := 0; i &lt; 1000; i&#43;&#43; {
+		go func() {
+			counter.Increment(http.MethodGet)
+			// handle request
+		}()
+	}
+	for i := 0; i &lt; 1000; i&#43;&#43; {
+		go func() {
+			counter.Increment(http.MethodPost)
+			// handle request
+		}()
+	}
+
+	time.Sleep(time.Second * 2)
+	fmt.Println(http.MethodGet, counter.GetCount(http.MethodGet))
+	fmt.Println(http.MethodPost, counter.GetCount(http.MethodPost))
+}
+</span></pre>
+</div>
+
+      
+      <span class="pagenumber">10</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>Defer Unlock()</h3>
+        
+  <div class="code playground" >
+<pre style="display: none"><span>package main
+
+import (
+	&#34;fmt&#34;
+	&#34;net/http&#34;
+	&#34;sync&#34;
+	&#34;time&#34;
+)
+
+</span></pre>
+
+<pre><span num="11">type RequestCounter struct {</span>
+<span num="12">    lock         sync.Mutex</span>
+<span num="13">    requestCount map[string]int</span>
+<span num="14">}</span>
+<span num="15"></span>
+<span num="16">func (r *RequestCounter) Increment(method string) {</span>
+<span num="17">    r.lock.Lock()</span>
+<span num="18">    <b>defer r.lock.Unlock()</b></span>
+<span num="19">    if count := r.requestCount[method]; count &gt;= 500 {</span>
+<span num="20">        return</span>
+<span num="21">    }</span>
+<span num="22">    r.requestCount[method]&#43;&#43;</span>
+<span num="23">}</span>
+<span num="24"></span>
+<span num="25">func (r *RequestCounter) GetCount(method string) int {</span>
+<span num="26">    r.lock.Lock()</span>
+<span num="27">    <b>defer r.lock.Unlock()</b></span>
+<span num="28">    return r.requestCount[method]</span>
+<span num="29">}</span>
+</pre>
+
+<pre style="display: none"><span>
+func main() {
+	counter := RequestCounter{requestCount: make(map[string]int)}
+	for i := 0; i &lt; 1000; i&#43;&#43; {
+		go func() {
+			counter.Increment(http.MethodGet)
+			// handle request
+		}()
+	}
+	for i := 0; i &lt; 1000; i&#43;&#43; {
+		go func() {
+			counter.Increment(http.MethodPost)
+			// handle request
+		}()
+	}
+
+	time.Sleep(time.Second * 2)
+	fmt.Println(http.MethodGet, counter.GetCount(http.MethodGet))
+	fmt.Println(http.MethodPost, counter.GetCount(http.MethodPost))
+}
+</span></pre>
+</div>
+
+      
+      <span class="pagenumber">11</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>Co je dobré vědět a na co si dávat pozor?</h3>
+        
+  <ul>
+  
+    <li>Volání Unlock() na odemčeném mutexu zpanikaří</li>
+  
+  </ul>
+
+  <div class="code playground" >
+<pre style="display: none"><span>package main
+
+import &#34;sync&#34;
+
+</span></pre>
+
+<pre><span num="6">func main() {</span>
+<span num="7">    lock := sync.Mutex{}</span>
+<span num="8">    lock.Unlock() // &lt;-- ajaj</span>
+<span num="9">}</span>
+</pre>
+
+
+</div>
+
+  <ul>
+  
+    <li>Volání Lock() na zamčeném mutexu v rámci jedné gouroutine může skončit deadlockem</li>
+  
+  </ul>
+
+  <div class="code playground" >
+<pre style="display: none"><span>package main
+
+import &#34;sync&#34;
+
+</span></pre>
+
+<pre><span num="6">func main() {</span>
+<span num="7">    lock := sync.Mutex{}</span>
+<span num="8">    lock.Lock()</span>
+<span num="9">    lock.Lock() // &lt;-- ajaj</span>
+<span num="10">}</span>
+</pre>
+
+
+</div>
+
+  <ul>
+  
+    <li>nezáleží na pořadí žádostí o zámek</li>
+  
+  </ul>
+
+      
+      <span class="pagenumber">12</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>package atomic</h3>
+        
+  <ul>
+  
+    <li>funkce pro bezpečnou práci s celými čísly</li>
+  
+  </ul>
+
+  <div class="code playground" >
+<pre style="display: none"><span>package main
+
+import (
+	&#34;fmt&#34;
+	&#34;sync/atomic&#34;
+	&#34;time&#34;
+)
+
+</span></pre>
+
+<pre><span num="10">type RequestCounter struct {</span>
+<span num="11">    requestCount int32</span>
+<span num="12">}</span>
+<span num="13"></span>
+<span num="14">func (r *RequestCounter) Increment() {</span>
+<span num="15">    <b>atomic.AddInt32(&amp;r.requestCount, 1)</b></span>
+<span num="16">}</span>
+<span num="17">func (r *RequestCounter) GetCount() int32 {</span>
+<span num="18">    <b>return atomic.LoadInt32(&amp;r.requestCount)</b></span>
+<span num="19">}</span>
+<span num="20">func main() {</span>
+<span num="21">    counter := RequestCounter{}</span>
+<span num="22">    for i := 0; i &lt; 1000; i&#43;&#43; {</span>
+<span num="23">        go func() {</span>
+<span num="24">            counter.Increment()</span>
+<span num="25">            // handle request</span>
+<span num="26">        }()</span>
+<span num="27">    }</span>
+<span num="28"></span>
+<span num="29">    time.Sleep(time.Second * 2)</span>
+<span num="30">    fmt.Println(counter.GetCount())</span>
+<span num="31">}</span>
+</pre>
+
+
+</div>
+
+      
+      <span class="pagenumber">13</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>Mnoho čtení a málo zápisu ~ sync.RWMutex</h3>
+        
+  <div class="code" >
+
+
+<pre><span num="4">type RWMutex interface {</span>
+<span num="5">    // zápisové zámky</span>
+<span num="6">    Lock()</span>
+<span num="7">    Unlock()</span>
+<span num="8"></span>
+<span num="9">    // čtecí zámky</span>
+<span num="10">    RLock()</span>
+<span num="11">    RUnlock()</span>
+<span num="12">}</span>
+</pre>
+
+
+</div>
+
+  <ul>
+  
+    <li>readeři - gouroutines, které používají zámek ke čtení</li>
+  
+    <li>writeři - gouroutines, které používají zámek k zápisu</li>
+  
+  </ul>
+
+      
+      <span class="pagenumber">14</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>Graf v čase</h3>
+        
+  
+  <p>
+    Žlutá úsečka - zamknuté pro čtení, Červená úsečka - zamknuté pro zápis
+  </p>
+  
+
+<div class="image">
+  <img src="img/rlock.png" width="800">
+</div>
+
+      
+      <span class="pagenumber">15</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>Optimalizace</h3>
+        
+  <ul>
+  
+    <li>najednou může číst až 1073741823 readerů (přes miliardu)</li>
+  
+  </ul>
+
+  <div class="code" >
+
+
+<pre><span num="8">type RequestCounter struct {</span>
+<span num="9">    <b>lock         sync.RWMutex</b></span>
+<span num="10">    requestCount map[string]int</span>
+<span num="11">}</span>
+<span num="12"></span>
+<span num="13">func (r *RequestCounter) Increment(method string) {</span>
+<span num="14">    r.lock.Lock()</span>
+<span num="15">    defer r.lock.Unlock()</span>
+<span num="16">    if count := r.requestCount[method]; count &gt;= 500 {</span>
+<span num="17">        return</span>
+<span num="18">    }</span>
+<span num="19">    r.requestCount[method]&#43;&#43;</span>
+<span num="20">}</span>
+<span num="21"></span>
+<span num="22">func (r *RequestCounter) GetCount(method string) int {</span>
+<span num="23">    <b>r.lock.RLock()</b></span>
+<span num="24">    <b>defer r.lock.RUnlock()</b></span>
+<span num="25">    return r.requestCount[method]</span>
+<span num="26">}</span>
+</pre>
+
+
+</div>
+
+      
+      <span class="pagenumber">16</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>Co je dobré vědět?</h3>
+        
+  <ul>
+  
+    <li>readeři i writeři se vždy dostanou ke sdílenému zdroji</li>
+  
+    <li>GO za nás nezajistí, že proměnná pod čtecím zámkem bude jen pro čtení</li>
+  
+  </ul>
+
+  <div class="code playground" >
+<pre style="display: none"><span>package main
+
+import (
+	&#34;fmt&#34;
+	&#34;sync&#34;
+)
+
+</span></pre>
+
+<pre><span num="9">func main() {</span>
+<span num="10">    rwLock := sync.RWMutex{}</span>
+<span num="11">    number := 5</span>
+<span num="12">    rwLock.RLock()   // čtecí zámek</span>
+<span num="13">    <b>number = 10      // GO tomuto nezabrání</b></span>
+<span num="14">    rwLock.RUnlock() // odemknutí čtecího zámku</span>
+<span num="15">    fmt.Println(number)</span>
+<span num="16">}</span>
+</pre>
+
+
+</div>
+
+      
+      <span class="pagenumber">17</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>Více instancí se sdílenými zdroji: Teď nám sync.Mutex nepomůže..</h3>
+        
+<div class="image">
+  <img src="img/multiple_instances.png" width="600">
+</div>
+
+      
+      <span class="pagenumber">18</span>
+      </article>
+  
+  
+
+      <article>
+        <h3>Thank you</h3>
+        
+          <div class="presenter">
+            
+  
+  <p>
+    Matěj Pavlíček
+  </p>
+  
+
+  
+  <p>
+    backend vývojář, vshosting~
+  </p>
+  
+<p class="link"><a href="mailto:pavlicek@vshosting.cz" target="_blank">pavlicek@vshosting.cz</a></p>
+          </div>
+        
+      </article>
+
+    </section>
+
+    <div id="help">
+      Use the left and right arrow keys or click the left and right
+      edges of the page to navigate between slides.<br>
+      (Press 'H' or navigate to hide this message.)
+    </div>
+
+    
+    <script src='../../play.js'></script>
+    
+
+    <script>
+      (function() {
+        
+        if (window["location"] && window["location"]["hostname"] == "talks.golang.org") {
+          var ga = document.createElement("script"); ga.type = "text/javascript"; ga.async = true;
+          ga.src = ("https:" == document.location.protocol ? "https://ssl" : "http://www") + ".google-analytics.com/ga.js";
+          var s = document.getElementsByTagName("script")[0]; s.parentNode.insertBefore(ga, s);
+        }
+      })();
+    </script>
+  </body>
+</html>

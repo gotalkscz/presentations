@@ -1,0 +1,273 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Grpc.io</title>
+    <meta charset='utf-8'>
+    <script>
+      var notesEnabled =  false ;
+    </script>
+    <script src='../../static/slides.js'></script>
+
+    
+
+    <script>
+      
+      if (window["location"] && window["location"]["hostname"] == "talks.golang.org") {
+        var _gaq = _gaq || [];
+        _gaq.push(["_setAccount", "UA-11222381-6"]);
+        _gaq.push(["b._setAccount", "UA-49880327-6"]);
+        window.trackPageview = function() {
+          _gaq.push(["_trackPageview", location.pathname+location.hash]);
+          _gaq.push(["b._trackPageview", location.pathname+location.hash]);
+        };
+        window.trackPageview();
+        window.trackEvent = function(category, action, opt_label, opt_value, opt_noninteraction) {
+          _gaq.push(["_trackEvent", category, action, opt_label, opt_value, opt_noninteraction]);
+          _gaq.push(["b._trackEvent", category, action, opt_label, opt_value, opt_noninteraction]);
+        };
+      }
+    </script>
+  </head>
+
+  <body style='display: none'>
+
+    <section class='slides layout-widescreen'>
+
+      <article>
+        <h1>Grpc.io</h1>
+        
+        
+        
+          <div class="presenter">
+            
+  
+  <p>
+    Jan Saidl
+  </p>
+  
+
+  
+  <p>
+    vývojář, vshosting~
+  </p>
+  
+
+          </div>
+        
+      </article>
+
+  
+  
+      <article >
+      
+        <h3>Obsah</h3>
+        
+  <ul>
+  
+    <li>Co je GRPC</li>
+  
+    <li>Co jsou Protocol buffers</li>
+  
+    <li>Kompatibilita</li>
+  
+    <li>Ukázky</li>
+  
+  </ul>
+
+      
+      <span class="pagenumber">2</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>Co je GRPC</h3>
+        
+  <ul>
+  
+    <li><a href="https://grpc.io/" target="_blank">grpc.io</a></li>
+  
+    <li>RPC framework</li>
+  
+    <li>jednoduchá definice service</li>
+  
+    <li>flexibilita</li>
+  
+    <li>podpora jazyků (Go, Java, C++, C#, Node, PHP, Python, Ruby)</li>
+  
+    <li>google api <a href="https://github.com/googleapis/googleapis" target="_blank">github.com/googleapis/googleapis</a></li>
+  
+    <li>nahrazení REST, SOAP</li>
+  
+    <li>komunikace (micro)servis</li>
+  
+  </ul>
+
+      
+      <span class="pagenumber">3</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>Co jsou Protocol buffers</h3>
+        
+  <ul>
+  
+    <li><a href="https://developers.google.com/protocol-buffers/docs/proto3" target="_blank">developers.google.com/protocol-buffers</a></li>
+  
+    <li>serializace datových struktur</li>
+  
+    <li>na jazyku nezávislé</li>
+  
+  </ul>
+
+  <div class="code" >
+
+
+<pre><span num="3">message Book {</span>
+<span num="4">    string id = 1;</span>
+<span num="5">    string isbn = 2;</span>
+<span num="6">    string title = 3;</span>
+<span num="7">    Author author = 4;</span>
+<span num="8">}</span>
+<span num="9"></span>
+<span num="10">message Author {</span>
+<span num="11">    string id = 1;</span>
+<span num="12">    string firstname = 2;</span>
+<span num="13">    string lastname = 3;</span>
+<span num="14"></span>
+<span num="15">}</span>
+</pre>
+
+
+</div>
+
+      
+      <span class="pagenumber">4</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>Kompatibilita - WEB</h3>
+        
+  <ul>
+  
+    <li>grpc-web</li>
+  
+    <li><a href="https://github.com/improbable-eng/grpc-web" target="_blank">github.com/improbable-eng/grpc-web</a></li>
+  
+    <li>HTTP2 jinak fallback na HTTP/1.1</li>
+  
+    <li>Fetch API jinak fallback na XMLHttpRequest</li>
+  
+    <li>Chrome &gt;= 41, Firefox &gt;= 21, Edge &gt;= 13, IE &gt;= 11, Safari &gt;= 6</li>
+  
+  </ul>
+
+      
+      <span class="pagenumber">5</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>Kompatibilita - REST API</h3>
+        
+  <ul>
+  
+    <li><a href="https://github.com/grpc-ecosystem/grpc-gateway" target="_blank">github.com/grpc-ecosystem/grpc-gateway</a></li>
+  
+  </ul>
+
+<div class="image">
+  <img src="img/grpc-gateway.png" width="800">
+</div>
+
+  
+  <p>
+    <a href="https://github.com/grpc-ecosystem/grpc-gateway" target="_blank">zdroj</a>
+  </p>
+  
+
+      
+      <span class="pagenumber">6</span>
+      </article>
+  
+  
+  
+      <article >
+      
+        <h3>Ukázky</h3>
+        
+  <ul>
+  
+    <li>Instalace</li>
+  
+    <li>Server</li>
+  
+    <li>Client</li>
+  
+    <li>Server stream</li>
+  
+    <li>Client stream</li>
+  
+  </ul>
+
+      
+      <span class="pagenumber">7</span>
+      </article>
+  
+  
+
+      <article>
+        <h3>Thank you</h3>
+        
+          <div class="presenter">
+            
+  
+  <p>
+    Jan Saidl
+  </p>
+  
+
+  
+  <p>
+    vývojář, vshosting~
+  </p>
+  
+<p class="link"><a href="http://twitter.com/jansaidl" target="_blank">@jansaidl</a></p>
+          </div>
+        
+      </article>
+
+    </section>
+
+    <div id="help">
+      Use the left and right arrow keys or click the left and right
+      edges of the page to navigate between slides.<br>
+      (Press 'H' or navigate to hide this message.)
+    </div>
+
+    
+    <script src='../../play.js'></script>
+    
+
+    <script>
+      (function() {
+        
+        if (window["location"] && window["location"]["hostname"] == "talks.golang.org") {
+          var ga = document.createElement("script"); ga.type = "text/javascript"; ga.async = true;
+          ga.src = ("https:" == document.location.protocol ? "https://ssl" : "http://www") + ".google-analytics.com/ga.js";
+          var s = document.getElementsByTagName("script")[0]; s.parentNode.insertBefore(ga, s);
+        }
+      })();
+    </script>
+  </body>
+</html>
