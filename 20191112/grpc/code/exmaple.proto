@@ -1,0 +1,15 @@
+
+
+message Book {
+    string id = 1;
+    string isbn = 2;
+    string title = 3;
+    Author author = 4;
+}
+
+message Author {
+    string id = 1;
+    string firstname = 2;
+    string lastname = 3;
+
+}

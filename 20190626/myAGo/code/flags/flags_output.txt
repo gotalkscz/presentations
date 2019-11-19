@@ -1,0 +1,6 @@
+
+js@brundibar:~/go/vsh/talks$ go run flags.go
+defaultní hodnota
+
+js@brundibar:~/go/vsh/talks$ go run flags.go  -value "GoTalk"
+GoTalk

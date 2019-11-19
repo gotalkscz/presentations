@@ -1,0 +1,10 @@
+
+js@brundibar:~/go/vsh/talks$ go run viper.go count 1 2 3 4 5
+5
+
+js@brundibar:~/go/vsh/talks$ export FORMAT="pocet: %d"; go run viper.go count 1 2 3 4 5
+počet: 5
+
+
+
+

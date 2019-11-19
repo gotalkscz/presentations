@@ -1,0 +1,2 @@
+wire: app.go:14:6: provider has multiple parameters of type *service.Hello
+wire: generate failed

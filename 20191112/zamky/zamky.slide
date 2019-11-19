@@ -1,0 +1,111 @@
+Zámky v GO
+
+Matěj Pavlíček
+backend vývojář, vshosting~
+pavlicek@vshosting.cz
+
+* Co nás čeká?
+- Co je to kritická sekce?
+- Práce se sync.Mutex a sync.RWMutex
+- Více instancí přistupujících ke sdíleným zdrojům
+
+* Request counter
+
+.play code/counter_unsafe/main.go /START OMIT/,/END OMIT/
+
+* Kritická sekce
+
+- neohlídané kritické sekce mohou vést k nepředvídatelným výsledkům
+
+# částem programu procesů, které sdílí zdroje s dalšími procesy se říká kritické sekce
+# v GO je snadné pracovat s více procesy najednou a proto je důležité si na kritické sekce dávat pozor
+# pokud kritická sekce není ohlídaná -> race condition
+
+.play code/critical_section/main.go /START OMIT/,/END OMIT/
+
+# go run --race | race detector
+
+* sync.Mutex
+
+.code code/mutex/main.go /START OMIT/,/END OMIT/
+
+.image img/lock.png _ 400
+
+* Bezpečný request counter
+
+.play code/counter/main.go /START OMIT/,/END OMIT/
+
+* Vylepšený request counter
+
+.code code/map_counter_unsafe/main.go /START OMIT/,/END OMIT/
+
+# od jisté verze začla race práce s mapou panikařit
+
+* Vylepšený request counter
+
+.play code/map_counter_unsafe/main.go /START B OMIT/,/END B OMIT/
+
+* Mutex nesmí být kopírován!
+
+.play code/map_counter/main.go /START OMIT/,/END OMIT/
+
+* Return statement uvnitř kritické sekce
+
+.play code/defer_unsafe/main.go /START OMIT/,/END OMIT/
+
+* Defer Unlock()
+
+.play code/defer/main.go /START OMIT/,/END OMIT/
+
+* Co je dobré vědět a na co si dávat pozor?
+
+- Volání Unlock() na odemčeném mutexu zpanikaří
+
+.play code/unlock_fatal/main.go /START OMIT/,/END OMIT/
+
+- Volání Lock() na zamčeném mutexu v rámci jedné gouroutine může skončit deadlockem
+
+.play code/deadlock/main.go /START OMIT/,/END OMIT/
+
+- nezáleží na pořadí žádostí o zámek
+
+* package atomic
+
+- funkce pro bezpečnou práci s celými čísly
+
+.play code/atomic/main.go /START OMIT/,/END OMIT/
+
+* Mnoho čtení a málo zápisu ~ sync.RWMutex
+
+.code code/rwmutex/main.go /START OMIT/,/END OMIT/
+
+- readeři - gouroutines, které používají zámek ke čtení
+- writeři - gouroutines, které používají zámek k zápisu
+
+* Graf v čase
+
+Žlutá úsečka - zamknuté pro čtení, Červená úsečka - zamknuté pro zápis
+
+.image img/rlock.png _ 800
+
+# jakmile si writer požádá o zámek, žádný jiný reader nový čtecí zámek nedostane
+# po odemknutí zápisového zámku vždy dostanou přednost readeři, kteří už čekají
+
+* Optimalizace
+
+- najednou může číst až 1073741823 readerů (přes miliardu)
+
+.code code/rw/main.go /START OMIT/,/END OMIT/
+
+# benchmark
+
+* Co je dobré vědět?
+
+- readeři i writeři se vždy dostanou ke sdílenému zdroji
+- GO za nás nezajistí, že proměnná pod čtecím zámkem bude jen pro čtení
+
+.play code/write_in_read_lock/main.go /START OMIT/,/END OMIT/
+
+* Více instancí se sdílenými zdroji: Teď nám sync.Mutex nepomůže..
+
+.image img/multiple_instances.png _ 600

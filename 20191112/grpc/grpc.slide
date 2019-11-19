@@ -1,0 +1,57 @@
+Grpc.io
+
+Jan Saidl
+vývojář, vshosting~
+@jansaidl
+
+* Obsah
+- Co je GRPC
+- Co jsou Protocol buffers
+- Kompatibilita
+- Ukázky
+
+
+* Co je GRPC
+
+- [[https://grpc.io/][grpc.io]]
+- RPC framework
+- jednoduchá definice service
+- flexibilita
+- podpora jazyků (Go, Java, C++, C#, Node, PHP, Python, Ruby)
+- google api [[https://github.com/googleapis/googleapis][github.com/googleapis/googleapis]]
+- nahrazení REST, SOAP
+- komunikace (micro)servis
+
+* Co jsou Protocol buffers
+
+- [[https://developers.google.com/protocol-buffers/docs/proto3][developers.google.com/protocol-buffers]]
+- serializace datových struktur
+- na jazyku nezávislé
+
+
+.code code/exmaple.proto
+
+* Kompatibilita - WEB
+- grpc-web
+- [[https://github.com/improbable-eng/grpc-web][github.com/improbable-eng/grpc-web]]
+- HTTP2 jinak fallback na HTTP/1.1
+- Fetch API jinak fallback na XMLHttpRequest
+- Chrome >= 41, Firefox >= 21, Edge >= 13, IE >= 11, Safari >= 6
+
+
+* Kompatibilita - REST API
+
+- [[https://github.com/grpc-ecosystem/grpc-gateway][github.com/grpc-ecosystem/grpc-gateway]]
+
+.image img/grpc-gateway.png _ 800
+
+[[https://github.com/grpc-ecosystem/grpc-gateway][zdroj]]
+
+* Ukázky
+
+- Instalace
+- Server
+- Client
+- Server stream
+- Client stream
+

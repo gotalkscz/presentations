@@ -1,0 +1,5 @@
+wire: container.go:12:1: inject CreateApp: no provider found for service.Formater
+	needed by *service.Hello in provider "New" (service/service.go:12:6)
+	needed by *wire.App in provider "New" (app.go:12:6)
+wire: wire: generate failed
+wire: at least one generate failure

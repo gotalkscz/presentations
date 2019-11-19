@@ -1,0 +1,181 @@
+package auto
+
+// {{ Filename "gen" }}
+import (
+{{range .GetImports }}  {{.}}
+{{end}})
+
+type Config struct {
+    {{range .Configs }}
+        {{.InitName}} {{.OutputTypeStar}}{{end}}
+}
+
+func NewConfig(prefix string,
+	configurator *configurator.Handler,
+) *Config {
+    c := &Config{
+	{{range .Configs}}	  {{.InitName}}: ({{.OutputTypeStar}})({{.InitFunc}}()),
+{{end}}
+    }
+    {{range .Configs}}    configurator.Register(concat(prefix, "{{.ConfigPath}}"), &c.{{.InitName}})
+    {{end}}
+	return c
+}
+
+
+{{range .Configs }}
+
+type {{.InitName}} {{.OutputType}}
+
+func Get{{.InitName}}(c Config) {{.InitName}} {
+	return {{.InitName}}(c.{{.InitName}})
+}
+{{end}}
+
+
+type AppConfig struct {
+	configurator *configurator.Handler
+	config       *Config
+}
+
+func NewAppConfig(prefix string, cmd *cobra.Command) *AppConfig {
+	configurator := configurator.New(cmd)
+	return &AppConfig{
+		configurator: configurator,
+		config:       NewConfig(prefix, configurator),
+	}
+}
+
+func (c *AppConfig) Read(app *app.ApplicationSetup, cmd *cobra.Command) error {
+	return c.configurator.Read(app, cmd)
+}
+
+func (c *AppConfig) Configurator() *configurator.Handler {
+	return c.configurator
+}
+
+func (c *AppConfig) Register(prefix string, in interface{}) {
+	c.configurator.Register(prefix, in)
+}
+
+func (c *AppConfig) ConfigCommand(app *app.ApplicationSetup) *cobra.Command {
+	return c.configurator.ConfigCommand(app)
+}
+
+func (c AppConfig) Config() Config {
+	return *c.config
+}
+
+var ConfigSet = wire.NewSet(
+    {{range .Configs}}   Get{{.InitName}},
+    {{end}}
+)
+
+
+func concat(parts ...string) string {
+	var result []string
+	for _, part := range parts {
+		p := strings.TrimPrefix(part, "<")
+		if strings.HasPrefix(part, "<") && len(result) > 0 {
+			result[len(result)-1] = p
+		} else {
+			result = append(result, p)
+		}
+	}
+	return strings.Join(result, ".")
+}
+
+var ServiceSet = wire.NewSet(
+    {{range .Services}}   Get{{.InitName}},
+    {{end}}
+)
+
+
+{{range .Services }}
+
+type {{.InitName}} {{.OutputType}}
+
+func Get{{.InitName}}({{range .Dependencies}}{{.InitName}} {{.TypeStar}},
+        {{end}}) ({{.InitNameStar}}{{if .InitFuncWithError}}, error{{end}}) {
+	{{if .InitFuncWithError}}
+	v, err := {{.InitFunc}}({{range .Dependencies}}({{.InitTypeStar}})({{.TransformationStart}} {{.InitName}} {{.TransformationEnd}}),
+                                                  	{{end}})
+   	return ({{.InitNameStar}})(v), err
+	{{else}}
+	return ({{.InitNameStar}})({{.InitFunc}}({{range .Dependencies}}({{.InitTypeStar}})({{.TransformationStart}} {{.InitName}} {{.TransformationEnd}}),
+	{{end}}))
+	{{end}}
+
+
+}
+{{end}}
+
+
+func NewApplication(
+	systemApp *app.ApplicationSetup,
+    {{range $index, $element := .Services -}}
+    	{{ if ne .AppInject "_" -}}
+		{{.AppInjectIndexed}}{{ $index }} {{.InitNameStar}},
+		{{ else -}}
+		_ {{.InitNameStar}},
+		{{ end -}}
+    {{end -}}
+) *App {
+	return &App{
+		app:    systemApp,
+		{{range $index, $element := .Services -}}
+			{{ if ne .AppInject "_" -}}
+			{{.AppInject}}: ({{.InitTypeStar}})({{ .AppInjectIndexed }}{{ $index }}),
+			{{end -}}
+    	{{end -}}
+	}
+}
+
+type App struct {
+	app    *app.ApplicationSetup
+	{{range .Services -}}
+		{{ if ne .AppInject "_" -}}
+		{{.AppInject}} {{.InitTypeStar}}
+		{{end -}}
+    {{end -}}
+}
+
+{{range .Services -}}
+	{{ if ne .AppInject "_" -}}
+func (h *App) Get{{ .AppInject | FirstToUpper }}() {{.InitTypeStar}} {
+	return h.{{ .AppInject }}
+}
+	{{end -}}
+{{end -}}
+
+func (h *App) Run() error {
+	return h.runner.RunWithSigTerm(h.app.Context, h.app.Cancel)
+}
+
+{{if not .SkipRunCommand }}
+func CreateCommand(app *app.ApplicationSetup) *cobra.Command {
+
+	cmd := &cobra.Command{
+		Use:   {{GoValue .Command}},
+		Short: {{GoValue .CommandShort}},
+		Long:  {{GoValue .CommandLong}},
+	}
+
+	cfg := NewAppConfig({{GoValue .ConfigPrefix}}, cmd)
+
+	cmd.RunE = func(cmd *cobra.Command, args []string) error {
+		if err := cfg.Read(app, cmd); err != nil {
+			return err
+		}
+
+		application, err := CreateApp(app, cfg.Config())
+		if err != nil {
+			panic(err)
+		}
+		return application.Run()
+	}
+	cmd.AddCommand(cfg.ConfigCommand(app))
+
+	return cmd
+}
+{{end}}

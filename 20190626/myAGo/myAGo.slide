@@ -1,0 +1,226 @@
+My a Go
+jak si ulehčujeme život
+
+Jan Saidl
+vývojář, vshosting~
+@jansaidl
+
+* Obsah
+- flagy
+- větší CLI aplikace a jejich konfigurace
+- dependency injection
+- genererování kód
+
+
+* flagy
+
+.code code/flags/flags.go
+
+výstup:
+.code code/flags/flags_output.txt
+
+* Větší CLI aplikace
+
+*cobra*
+
+- [[https://github.com/spf13/cobra][github.com/spf13/cobra]]
+- man
+- bash autocomplete
+- help příkazy
+- dokumentace v Markdownu
+- strukturované příkazy
+
+* cobra
+
+.play code/cobra/cobra.go /START OMIT/,/END OMIT/
+
+* Konfigurace aplikací
+
+*viper*
+
+- [[https://github.com/spf13/viper][github.com/spf13/viper]]
+- konfigurace
+
+zdroje hodnot
+
+- soubory (xml, yaml, toml, json ...)
+- flagy
+- ENV proměnné
+- vzdálené zdroje consul a etcd
+
+vychytávky
+
+- sledování změn konfiguračních hodnot za běhu
+
+* viper
+
+.code code/viper/viper.go /START OMIT/,/END OMIT/
+
+výstup:
+
+.code code/viper/viper_output.txt
+
+* Struktura aplikací
+
+* Dependency injection
+
+*dig*
+
+- [[https://github.com/uber-go/dig][github.com/uber-go/dig]]
+- reflexe
+- runtime DI
+
+
+*wire*
+
+- [[https://github.com/google/wire][github.com/google/wire]]
+- generátor
+- compiletime DI
+
+
+* wire
+
+- závislosti mezi službami jsou reprezovovány jako parametry funkce
+- zavislosti jsou jsou doplňeny na základě shody typu
+
+příklad:
+
+ func CreateServiceAB(a *ServiceA, b ServiceB) *ServiceAB
+
+ func CreateServiceA() *ServiceA
+
+ func CreateServiceB() *ServiceB
+
+* Služby a závislosti
+
+.code code/service/service.go HL1
+
+* Služby a závislosti
+
+.code code/service/config.go
+
+.code code/wire/app.go /START OMIT/,/END OMIT/
+
+* wire - kontroly
+
+.code code/wire/container.go /START OMIT/,/END OMIT/
+
+go generate
+
+.code code/wire/error.txt
+
+* wire
+
+.code code/wireFormater/container.go /START OMIT/,/END OMIT/ HLnew
+
+* go generate
+
+.code code/wireFormater/wire_gen.go /START OMIT/,/END OMIT/
+
+* spuštění
+
+.code code/cobraWire/main.go /START OMIT/,/END OMIT/ HLnew
+
+* složitější struktura aplikace
+
+.code code/wireTrabl1/app.go /START OMIT/,/END OMIT/
+
+* výstup
+
+.code code/wireTrabl1/container.go /START OMIT/,/END OMIT/
+
+go generate
+
+.code code/wireTrabl1/wire_gen.go /START OMIT/,/END OMIT/
+
+* jeden typ dvě instance
+
+- nemůžeme/nechceme zasahovat do kódu serviceA a serviceB
+
+* jedno z řešení?
+
+.code code/wireTrabl2/app.go /START OMIT/,/END OMIT/
+
+.code code/wireTrabl2/container.go /START OMIT/,/END OMIT/
+
+* výstup
+
+.code code/wireTrabl2/wire_gen.go /START OMIT/,/END OMIT/
+
+.caption UFF
+
+* naše řešení
+
+.caption to určitě jde vygenerovat
+
+.image img/Cartoon_Robot.svg _ 300
+
+* Generování kódu v Go
+
+stringer
+
+- [[https://godoc.org/golang.org/x/tools/cmd/stringer][golang.org/x/tools/cmd/stringer]]
+- jednoúčelová věc
+
+.code code/stringer/stringer.go /START OMIT/,/END OMIT/
+
+* výstup
+
+.code code/stringer/pill_string.go /START OMIT/,/END OMIT/
+
+* Proč generujeme kód
+
+- jsme líní
+- chceme wire
+- chceme typovost, ale nemáme generika
+- nemáme čas čekat
+- ne vždy jde všechno napsat univerzálně
+- může se to hodit
+
+
+* Generator templater
+
+definice:
+
+.code code/templater/test/test.go
+
+šablona:
+
+.code code/templater/test/test.tmpl
+
+* Použití
+
+.code code/templater/useSimple.go /START OMIT/,/END OMIT/
+
+výstup:
+
+.code code/templater/useSimple_templateA.go
+
+* Rozšíření o vlastní a vestavěné funkce
+
+.code code/templater/testFunc/test.go
+
+šablona:
+
+.code code/templater/testFunc/test.tmpl
+
+* výstup:
+
+.code code/templater/use_templateA.go
+
+* Jak s tím na wire?
+
+* DI šablona
+
+.code code/sdi/di.go /START OMIT/,/END OMIT/
+
+* výstup:
+
+.code code/wireTrabl2/wire_gen.go /START OMIT/,/END OMIT/
+
+* Jak to funguje?
+
+.image img/curtain-812222_1280.jpg _ 700
+
+* Dotazy
+
